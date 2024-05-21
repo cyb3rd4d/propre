@@ -48,9 +48,9 @@ func (decoder *CreateTodoRequestDecoder[Input]) Decode(req *http.Request) Create
 	return input
 }
 
-type CreateTodoUseCase[Input CreateTodoInput, Output CreateTodoOutput] struct{}
+type CreateTodoUseCaseInteractor[Input CreateTodoInput, Output CreateTodoOutput] struct{}
 
-func (g *CreateTodoUseCase[Input, Output]) Handle(ctx context.Context, input CreateTodoInput) CreateTodoOutput {
+func (g *CreateTodoUseCaseInteractor[Input, Output]) Handle(ctx context.Context, input CreateTodoInput) CreateTodoOutput {
 	var output CreateTodoOutput
 	if input.Error != nil {
 		output.Error = fmt.Errorf("[CreateTodoUseCase] %w caused by %s", errors.New("input error"), input.Error)
@@ -119,7 +119,7 @@ func (s *CreateTodoResponseSender[Output]) sendResponse(_ context.Context, rw ht
 // with the data held in the struct.
 func ExampleHTTPHandler() {
 	requestDecoder := &CreateTodoRequestDecoder[CreateTodoInput]{}
-	useCaseHandler := &CreateTodoUseCase[CreateTodoInput, CreateTodoOutput]{}
+	useCaseHandler := &CreateTodoUseCaseInteractor[CreateTodoInput, CreateTodoOutput]{}
 	responseSender := &CreateTodoResponseSender[CreateTodoOutput]{}
 	httpHandler := propre.NewHTTPHandler(requestDecoder, useCaseHandler, responseSender)
 
