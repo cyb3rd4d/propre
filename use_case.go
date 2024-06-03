@@ -11,7 +11,7 @@ import "context"
 //
 // Then your domain objects can be manipulated and the produced output can hold either the successful
 // scenario with the data to return to the client, or an error. The output will then be handled by the
-// response sender to produce the appropriate HTTP response.
+// presenter to produce the appropriate response.
 type UseCaseHandler[Input any, Output any] interface {
 	Handle(context.Context, Input) Output
 }
