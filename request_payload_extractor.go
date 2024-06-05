@@ -27,8 +27,8 @@ func XMLDecoder(req io.Reader) PayloadDecoder {
 	return xml.NewDecoder(req)
 }
 
-// Validatable is the contraint required by [RequestPayloadExtractor].
-// One the payload is decoded from the the request body, the method Validate() is
+// Validatable is the constraint required by [RequestPayloadExtractor].
+// Once the payload is decoded from the the request body, the method Validate() is
 // called. It is the responsibility of the payload struct to know how to validate
 // itself.
 type Validatable interface {
