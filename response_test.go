@@ -57,12 +57,18 @@ type responseTestCase struct {
 func TestResponse(t *testing.T) {
 	internalErrorBody := `{"error":"serious internal error"}`
 
+	withHTTPResponseHeaders := propre.WithHTTPResponseHeaders[payload[okViewModel], http.ResponseWriter](http.Header{
+		"content-encoding": []string{"plain"},
+		"x-custom-header":  []string{"custom-header-value"},
+	})
+
 	responseWithCustomInternalError := propre.NewHTTPResponse(
-		propre.WithHTTPResponseHeaders[payload[okViewModel], http.ResponseWriter](http.Header{
-			"content-encoding": []string{"plain"},
-			"x-custom-header":  []string{"custom-header-value"},
-		}),
+		withHTTPResponseHeaders,
 		propre.WithGenericInternalError[payload[okViewModel], http.ResponseWriter]([]byte(internalErrorBody)),
+	)
+
+	responseWithoutCustomInternalError := propre.NewHTTPResponse(
+		withHTTPResponseHeaders,
 	)
 
 	testCases := map[string]responseTestCase{
@@ -93,6 +99,14 @@ func TestResponse(t *testing.T) {
 			},
 			expectedHTTPStatus:   500,
 			expectedJSONResponse: []byte(internalErrorBody),
+		},
+		"response encoding error without custom error": {
+			response: responseWithoutCustomInternalError,
+			payload: payload[okViewModel]{
+				encodingError: true,
+			},
+			expectedHTTPStatus:   500,
+			expectedJSONResponse: []byte("internal error"),
 		},
 	}
 

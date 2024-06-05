@@ -5,6 +5,10 @@ import (
 	"net/http"
 )
 
+var (
+	defaultInternalError = []byte("internal error")
+)
+
 type HTTPSendable interface {
 	ContentType() string
 	Encode() ([]byte, error)
@@ -53,7 +57,12 @@ func (r *HTTPResponse[View, Writer]) Send(ctx context.Context, rw http.ResponseW
 	encoded, err := data.Encode()
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
-		rw.Write(r.genericInternalError)
+		internalError := defaultInternalError
+		if r.genericInternalError != nil {
+			internalError = r.genericInternalError
+		}
+
+		rw.Write(internalError)
 		return
 	}
 
