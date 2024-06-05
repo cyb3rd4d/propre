@@ -18,11 +18,11 @@ type payload[T any] struct {
 	encodingError bool
 }
 
-func (p payload[T]) ContentType() string {
+func (p payload[T]) ContentType(ctx context.Context) string {
 	return "application/json"
 }
 
-func (p payload[T]) Encode() ([]byte, error) {
+func (p payload[T]) Encode(ctx context.Context) ([]byte, error) {
 	if p.encodingError {
 		return nil, errors.New("encoding error")
 	}
@@ -30,7 +30,7 @@ func (p payload[T]) Encode() ([]byte, error) {
 	return json.Marshal(p)
 }
 
-func (p payload[T]) StatusCode() int {
+func (p payload[T]) StatusCode(ctx context.Context) int {
 	s := http.StatusOK
 	if p.Error != nil {
 		s = http.StatusInternalServerError

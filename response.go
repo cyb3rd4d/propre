@@ -10,9 +10,9 @@ var (
 )
 
 type HTTPSendable interface {
-	ContentType() string
-	Encode() ([]byte, error)
-	StatusCode() int
+	ContentType(context.Context) string
+	Encode(context.Context) ([]byte, error)
+	StatusCode(context.Context) int
 }
 
 type HTTPResponse[View HTTPSendable] struct {
@@ -44,7 +44,7 @@ func NewHTTPResponse[View HTTPSendable](opts ...HTTPResponseOpts[View]) *HTTPRes
 }
 
 func (r *HTTPResponse[View]) Send(ctx context.Context, rw http.ResponseWriter, data View) {
-	rw.Header().Set("content-type", data.ContentType())
+	rw.Header().Set("content-type", data.ContentType(ctx))
 
 	if len(r.headers) > 0 {
 		for header, values := range r.headers {
@@ -54,7 +54,7 @@ func (r *HTTPResponse[View]) Send(ctx context.Context, rw http.ResponseWriter, d
 		}
 	}
 
-	encoded, err := data.Encode()
+	encoded, err := data.Encode(ctx)
 	if err != nil {
 		rw.WriteHeader(http.StatusInternalServerError)
 		internalError := defaultInternalError
@@ -66,6 +66,6 @@ func (r *HTTPResponse[View]) Send(ctx context.Context, rw http.ResponseWriter, d
 		return
 	}
 
-	rw.WriteHeader(data.StatusCode())
+	rw.WriteHeader(data.StatusCode(ctx))
 	rw.Write(encoded)
 }
