@@ -82,8 +82,14 @@ type responseTestCase struct {
 }
 
 func TestResponse(t *testing.T) {
+	response := propre.NewHTTPResponse(
+		propre.WithHTTPResponseHeaders[payload[okViewModel], http.ResponseWriter](http.Header{
+			"content-encoding": []string{"plain"},
+			"x-custom-header":  []string{"custom-header-value"},
+		}))
+
 	presenter := &testPresenter[monad, http.ResponseWriter]{
-		response: propre.NewHTTPResponse[payload[okViewModel], http.ResponseWriter](),
+		response: response,
 	}
 
 	testCases := []responseTestCase{
@@ -118,12 +124,35 @@ func TestResponse(t *testing.T) {
 
 		body, err := io.ReadAll(response.Body)
 		if err != nil {
-			t.Fatalf("could not read the response body: %S", err)
+			t.Fatalf("could not read the response body: %s", err)
 			break
 		}
 
 		if string(body) != string(testCase.expectedJSONResponse) {
 			t.Fatalf("unexpected data, expected %s, got %s", string(testCase.expectedJSONResponse), string(body))
+			break
+		}
+
+		contentEncodingHeader := response.Header.Get("content-encoding")
+		if contentEncodingHeader == "" {
+			t.Fatal("content-encoding header not found in response")
+			break
+		}
+
+		if contentEncodingHeader != "plain" {
+			t.Fatalf("wrong content-encoding header value in response, expected %s, got %s", "plain", contentEncodingHeader)
+			break
+		}
+
+		xCustomHeader := response.Header.Get("x-custom-header")
+		if xCustomHeader == "" {
+			t.Fatal("x-custom-header not found in response")
+			break
+		}
+
+		if xCustomHeader != "custom-header-value" {
+			t.Fatalf("wrong x-custom-header header value in response, expected %s, got %s", "custom-header-value", xCustomHeader)
+			break
 		}
 	}
 }
