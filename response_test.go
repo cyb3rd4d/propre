@@ -103,8 +103,8 @@ func TestResponse(t *testing.T) {
 		response: response,
 	}
 
-	testCases := []responseTestCase{
-		{
+	testCases := map[string]responseTestCase{
+		"success response": {
 			output: monad{
 				Data: outputData{
 					SomeField: "some data",
@@ -113,14 +113,14 @@ func TestResponse(t *testing.T) {
 			expectedHTTPStatus:   200,
 			expectedJSONResponse: []byte(`{"ok":{"data":"success: some data"}}`),
 		},
-		{
+		"error response": {
 			output: monad{
 				Error: errors.New("some output error"),
 			},
 			expectedHTTPStatus:   500,
 			expectedJSONResponse: []byte(`{"error":{"message":"an error occurred: some output error"}}`),
 		},
-		{
+		"response encoding error with custom internal error": {
 			output: monad{
 				encodingError: true,
 			},
@@ -129,48 +129,50 @@ func TestResponse(t *testing.T) {
 		},
 	}
 
-	for _, testCase := range testCases {
-		ctx := context.Background()
-		rw := httptest.NewRecorder()
-		presenter.Present(ctx, rw, testCase.output)
-		response := rw.Result()
+	for testName, testCase := range testCases {
+		t.Run(testName, func(t *testing.T) {
+			ctx := context.Background()
+			rw := httptest.NewRecorder()
+			presenter.Present(ctx, rw, testCase.output)
+			response := rw.Result()
 
-		if response.StatusCode != testCase.expectedHTTPStatus {
-			t.Fatalf("wrong status code, expected %d, got %d", testCase.expectedHTTPStatus, response.StatusCode)
-			break
-		}
+			if response.StatusCode != testCase.expectedHTTPStatus {
+				t.Fatalf("wrong status code, expected %d, got %d", testCase.expectedHTTPStatus, response.StatusCode)
+				return
+			}
 
-		body, err := io.ReadAll(response.Body)
-		if err != nil {
-			t.Fatalf("could not read the response body: %s", err)
-			break
-		}
+			body, err := io.ReadAll(response.Body)
+			if err != nil {
+				t.Fatalf("could not read the response body: %s", err)
+				return
+			}
 
-		if string(body) != string(testCase.expectedJSONResponse) {
-			t.Fatalf("unexpected data, expected %s, got %s", string(testCase.expectedJSONResponse), string(body))
-			break
-		}
+			if string(body) != string(testCase.expectedJSONResponse) {
+				t.Fatalf("unexpected data, expected %s, got %s", string(testCase.expectedJSONResponse), string(body))
+				return
+			}
 
-		contentEncodingHeader := response.Header.Get("content-encoding")
-		if contentEncodingHeader == "" {
-			t.Fatal("content-encoding header not found in response")
-			break
-		}
+			contentEncodingHeader := response.Header.Get("content-encoding")
+			if contentEncodingHeader == "" {
+				t.Fatal("content-encoding header not found in response")
+				return
+			}
 
-		if contentEncodingHeader != "plain" {
-			t.Fatalf("wrong content-encoding header value in response, expected %s, got %s", "plain", contentEncodingHeader)
-			break
-		}
+			if contentEncodingHeader != "plain" {
+				t.Fatalf("wrong content-encoding header value in response, expected %s, got %s", "plain", contentEncodingHeader)
+				return
+			}
 
-		xCustomHeader := response.Header.Get("x-custom-header")
-		if xCustomHeader == "" {
-			t.Fatal("x-custom-header not found in response")
-			break
-		}
+			xCustomHeader := response.Header.Get("x-custom-header")
+			if xCustomHeader == "" {
+				t.Fatal("x-custom-header not found in response")
+				return
+			}
 
-		if xCustomHeader != "custom-header-value" {
-			t.Fatalf("wrong x-custom-header header value in response, expected %s, got %s", "custom-header-value", xCustomHeader)
-			break
-		}
+			if xCustomHeader != "custom-header-value" {
+				t.Fatalf("wrong x-custom-header header value in response, expected %s, got %s", "custom-header-value", xCustomHeader)
+				return
+			}
+		})
 	}
 }
