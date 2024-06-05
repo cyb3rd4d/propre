@@ -14,8 +14,9 @@ import (
 )
 
 type payload[T any] struct {
-	OK    *T              `json:"ok,omitempty"`
-	Error *errorViewModel `json:"error,omitempty"`
+	OK            *T              `json:"ok,omitempty"`
+	Error         *errorViewModel `json:"error,omitempty"`
+	encodingError bool
 }
 
 func (p payload[T]) ContentType() string {
@@ -23,6 +24,10 @@ func (p payload[T]) ContentType() string {
 }
 
 func (p payload[T]) Encode() ([]byte, error) {
+	if p.encodingError {
+		return nil, errors.New("encoding error")
+	}
+
 	return json.Marshal(p)
 }
 
@@ -48,8 +53,9 @@ type outputData struct {
 }
 
 type monad struct {
-	Data  outputData
-	Error error
+	Data          outputData
+	Error         error
+	encodingError bool
 }
 
 type testPresenter[Output monad, Writer http.ResponseWriter] struct {
@@ -58,6 +64,7 @@ type testPresenter[Output monad, Writer http.ResponseWriter] struct {
 
 func (s *testPresenter[Output, Writer]) Present(ctx context.Context, rw http.ResponseWriter, output monad) {
 	var p payload[okViewModel]
+	p.encodingError = output.encodingError
 
 	if output.Error != nil {
 		p.Error = &errorViewModel{
@@ -82,11 +89,15 @@ type responseTestCase struct {
 }
 
 func TestResponse(t *testing.T) {
+	internalErrorBody := `{"error":"serious internal error"}`
+
 	response := propre.NewHTTPResponse(
 		propre.WithHTTPResponseHeaders[payload[okViewModel], http.ResponseWriter](http.Header{
 			"content-encoding": []string{"plain"},
 			"x-custom-header":  []string{"custom-header-value"},
-		}))
+		}),
+		propre.WithGenericInternalError[payload[okViewModel], http.ResponseWriter]([]byte(internalErrorBody)),
+	)
 
 	presenter := &testPresenter[monad, http.ResponseWriter]{
 		response: response,
@@ -108,6 +119,13 @@ func TestResponse(t *testing.T) {
 			},
 			expectedHTTPStatus:   500,
 			expectedJSONResponse: []byte(`{"error":{"message":"an error occurred: some output error"}}`),
+		},
+		{
+			output: monad{
+				encodingError: true,
+			},
+			expectedHTTPStatus:   500,
+			expectedJSONResponse: []byte(internalErrorBody),
 		},
 	}
 

@@ -24,6 +24,12 @@ func WithHTTPResponseHeaders[View HTTPSendable, Writer http.ResponseWriter](head
 	}
 }
 
+func WithGenericInternalError[View HTTPSendable, Writer http.ResponseWriter](payload []byte) HTTPResponseOpts[View, Writer] {
+	return func(r *HTTPResponse[View, Writer]) {
+		r.genericInternalError = payload
+	}
+}
+
 func NewHTTPResponse[View HTTPSendable, Writer http.ResponseWriter](opts ...HTTPResponseOpts[View, Writer]) *HTTPResponse[View, Writer] {
 	response := &HTTPResponse[View, Writer]{}
 	for _, opt := range opts {
