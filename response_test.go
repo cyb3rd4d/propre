@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -48,42 +47,9 @@ type okViewModel struct {
 	Data string `json:"data"`
 }
 
-type outputData struct {
-	SomeField string
-}
-
-type monad struct {
-	Data          outputData
-	Error         error
-	encodingError bool
-}
-
-type testPresenter[Output monad, Writer http.ResponseWriter] struct {
-	response *propre.HTTPResponse[payload[okViewModel], Writer]
-}
-
-func (s *testPresenter[Output, Writer]) Present(ctx context.Context, rw http.ResponseWriter, output monad) {
-	var p payload[okViewModel]
-	p.encodingError = output.encodingError
-
-	if output.Error != nil {
-		p.Error = &errorViewModel{
-			Message: fmt.Sprintf("an error occurred: %s", output.Error),
-		}
-
-		s.response.Send(ctx, rw, p)
-		return
-	}
-
-	p.OK = &okViewModel{
-		Data: fmt.Sprintf("success: %s", output.Data.SomeField),
-	}
-
-	s.response.Send(ctx, rw, p)
-}
-
 type responseTestCase struct {
-	output               monad
+	response             *propre.HTTPResponse[payload[okViewModel], http.ResponseWriter]
+	payload              payload[okViewModel]
 	expectedHTTPStatus   int
 	expectedJSONResponse []byte
 }
@@ -91,7 +57,7 @@ type responseTestCase struct {
 func TestResponse(t *testing.T) {
 	internalErrorBody := `{"error":"serious internal error"}`
 
-	response := propre.NewHTTPResponse(
+	responseWithCustomInternalError := propre.NewHTTPResponse(
 		propre.WithHTTPResponseHeaders[payload[okViewModel], http.ResponseWriter](http.Header{
 			"content-encoding": []string{"plain"},
 			"x-custom-header":  []string{"custom-header-value"},
@@ -99,29 +65,30 @@ func TestResponse(t *testing.T) {
 		propre.WithGenericInternalError[payload[okViewModel], http.ResponseWriter]([]byte(internalErrorBody)),
 	)
 
-	presenter := &testPresenter[monad, http.ResponseWriter]{
-		response: response,
-	}
-
 	testCases := map[string]responseTestCase{
 		"success response": {
-			output: monad{
-				Data: outputData{
-					SomeField: "some data",
+			response: responseWithCustomInternalError,
+			payload: payload[okViewModel]{
+				OK: &okViewModel{
+					Data: "some data",
 				},
 			},
 			expectedHTTPStatus:   200,
-			expectedJSONResponse: []byte(`{"ok":{"data":"success: some data"}}`),
+			expectedJSONResponse: []byte(`{"ok":{"data":"some data"}}`),
 		},
 		"error response": {
-			output: monad{
-				Error: errors.New("some output error"),
+			response: responseWithCustomInternalError,
+			payload: payload[okViewModel]{
+				Error: &errorViewModel{
+					Message: "some output error",
+				},
 			},
 			expectedHTTPStatus:   500,
-			expectedJSONResponse: []byte(`{"error":{"message":"an error occurred: some output error"}}`),
+			expectedJSONResponse: []byte(`{"error":{"message":"some output error"}}`),
 		},
 		"response encoding error with custom internal error": {
-			output: monad{
+			response: responseWithCustomInternalError,
+			payload: payload[okViewModel]{
 				encodingError: true,
 			},
 			expectedHTTPStatus:   500,
@@ -133,7 +100,8 @@ func TestResponse(t *testing.T) {
 		t.Run(testName, func(t *testing.T) {
 			ctx := context.Background()
 			rw := httptest.NewRecorder()
-			presenter.Present(ctx, rw, testCase.output)
+			testCase.response.Send(ctx, rw, testCase.payload)
+
 			response := rw.Result()
 
 			if response.StatusCode != testCase.expectedHTTPStatus {
