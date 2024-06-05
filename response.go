@@ -15,27 +15,27 @@ type HTTPSendable interface {
 	StatusCode() int
 }
 
-type HTTPResponse[View HTTPSendable, Writer http.ResponseWriter] struct {
+type HTTPResponse[View HTTPSendable] struct {
 	headers              http.Header
 	genericInternalError []byte
 }
 
-type HTTPResponseOpts[View HTTPSendable, Writer http.ResponseWriter] func(r *HTTPResponse[View, Writer])
+type HTTPResponseOpts[View HTTPSendable] func(r *HTTPResponse[View])
 
-func WithHTTPResponseHeaders[View HTTPSendable, Writer http.ResponseWriter](headers http.Header) HTTPResponseOpts[View, Writer] {
-	return func(r *HTTPResponse[View, Writer]) {
+func WithHTTPResponseHeaders[View HTTPSendable](headers http.Header) HTTPResponseOpts[View] {
+	return func(r *HTTPResponse[View]) {
 		r.headers = headers
 	}
 }
 
-func WithGenericInternalError[View HTTPSendable, Writer http.ResponseWriter](payload []byte) HTTPResponseOpts[View, Writer] {
-	return func(r *HTTPResponse[View, Writer]) {
+func WithGenericInternalError[View HTTPSendable](payload []byte) HTTPResponseOpts[View] {
+	return func(r *HTTPResponse[View]) {
 		r.genericInternalError = payload
 	}
 }
 
-func NewHTTPResponse[View HTTPSendable, Writer http.ResponseWriter](opts ...HTTPResponseOpts[View, Writer]) *HTTPResponse[View, Writer] {
-	response := &HTTPResponse[View, Writer]{}
+func NewHTTPResponse[View HTTPSendable](opts ...HTTPResponseOpts[View]) *HTTPResponse[View] {
+	response := &HTTPResponse[View]{}
 	for _, opt := range opts {
 		opt(response)
 	}
@@ -43,7 +43,7 @@ func NewHTTPResponse[View HTTPSendable, Writer http.ResponseWriter](opts ...HTTP
 	return response
 }
 
-func (r *HTTPResponse[View, Writer]) Send(ctx context.Context, rw http.ResponseWriter, data View) {
+func (r *HTTPResponse[View]) Send(ctx context.Context, rw http.ResponseWriter, data View) {
 	rw.Header().Set("content-type", data.ContentType())
 
 	if len(r.headers) > 0 {
