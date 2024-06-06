@@ -14,7 +14,7 @@ func TestHTTPHandlerImplementsHTTPHandler(t *testing.T) {
 	handler := propre.NewHTTPHandler(
 		new(requestDecoderMock[any]),
 		new(useCaseHandlerMock[any, any]),
-		new(httpResponseSenderMock[any]),
+		new(presenterMock[any]),
 	)
 
 	f := func(h http.Handler) {}
@@ -28,10 +28,10 @@ func TestHTTPHandlerUsesARequestDecoderThenAUseCaseHandlerThenSendsTheResponse(t
 	useCaseHandler := new(useCaseHandlerMock[any, any])
 	defer useCaseHandler.AssertExpectations(t)
 
-	responseSender := new(httpResponseSenderMock[any])
-	defer responseSender.AssertExpectations(t)
+	presenter := new(presenterMock[any])
+	defer presenter.AssertExpectations(t)
 
-	handler := propre.NewHTTPHandler(requestDecoder, useCaseHandler, responseSender)
+	handler := propre.NewHTTPHandler(requestDecoder, useCaseHandler, presenter)
 	req := httptest.NewRequest(http.MethodGet, "/", nil)
 	rw := httptest.NewRecorder()
 
@@ -45,7 +45,7 @@ func TestHTTPHandlerUsesARequestDecoderThenAUseCaseHandlerThenSendsTheResponse(t
 	})
 
 	useCaseHandler.On("Handle", ctxArgMatcher, useCaseInput).Return(useCaseOutput)
-	responseSender.On("Send", ctxArgMatcher, rw, useCaseOutput)
+	presenter.On("Present", ctxArgMatcher, rw, useCaseOutput)
 
 	handler.ServeHTTP(rw, req)
 }
@@ -68,10 +68,10 @@ func (m *useCaseHandlerMock[Input, Output]) Handle(ctx context.Context, input In
 	return m.Called(ctx, input).Get(0).(Output)
 }
 
-type httpResponseSenderMock[Output any] struct {
+type presenterMock[Output any] struct {
 	mock.Mock
 }
 
-func (m *httpResponseSenderMock[Output]) Send(ctx context.Context, rw http.ResponseWriter, output Output) {
+func (m *presenterMock[Output]) Present(ctx context.Context, rw http.ResponseWriter, output Output) {
 	m.Called(ctx, rw, output)
 }

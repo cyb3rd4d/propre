@@ -62,9 +62,9 @@ func (g *CreateTodoUseCaseInteractor[Input, Output]) Handle(ctx context.Context,
 	return output
 }
 
-type CreateTodoResponseSender[Output CreateTodoOutput] struct{}
+type CreateTodoPresenter[Output CreateTodoOutput] struct{}
 
-func (s *CreateTodoResponseSender[Output]) Send(ctx context.Context, rw http.ResponseWriter, output CreateTodoOutput) {
+func (s *CreateTodoPresenter[Output]) Present(ctx context.Context, rw http.ResponseWriter, output CreateTodoOutput) {
 	type responseBodyOK struct {
 		Data struct {
 			ID    int    `json:"id"`
@@ -93,7 +93,7 @@ func (s *CreateTodoResponseSender[Output]) Send(ctx context.Context, rw http.Res
 	s.sendResponse(ctx, rw, http.StatusCreated, body)
 }
 
-func (s *CreateTodoResponseSender[Output]) sendResponse(_ context.Context, rw http.ResponseWriter, statusCode int, body any) {
+func (s *CreateTodoPresenter[Output]) sendResponse(_ context.Context, rw http.ResponseWriter, statusCode int, body any) {
 	rw.Header().Set("content-type", "application/json")
 	rw.WriteHeader(statusCode)
 	err := json.NewEncoder(rw).Encode(body)
@@ -113,15 +113,15 @@ func (s *CreateTodoResponseSender[Output]) sendResponse(_ context.Context, rw ht
 // an error, the task can be saved in the DB through a repository for example, and an output is returned
 // containing the title of the task and its ID.
 //
-// Finally, it's time to return a response to the client. The output is passed to the response sender.
+// Finally, it's time to return a response to the client. The output is passed to the presenter.
 // If the output contains an error, an appropriate response must be returned. For that you can use a
 // mapping, or a dedicated component. If the output does not contain an error, the response can be built
 // with the data held in the struct.
 func ExampleHTTPHandler() {
 	requestDecoder := &CreateTodoRequestDecoder[CreateTodoInput]{}
 	useCaseHandler := &CreateTodoUseCaseInteractor[CreateTodoInput, CreateTodoOutput]{}
-	responseSender := &CreateTodoResponseSender[CreateTodoOutput]{}
-	httpHandler := propre.NewHTTPHandler(requestDecoder, useCaseHandler, responseSender)
+	presenter := &CreateTodoPresenter[CreateTodoOutput]{}
+	httpHandler := propre.NewHTTPHandler(requestDecoder, useCaseHandler, presenter)
 
 	rw := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(`{"title":"New todo title"}`))
